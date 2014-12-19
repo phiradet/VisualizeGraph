@@ -19,7 +19,7 @@ public class VisualizeGraph {
      * @param args the command line arguments
      */
     public static void main(String[] args) {
-        //args = new String[] {"force","png","./data/clique.gexf","./data/clique.png"};
+        //args = new String[] {"force","png","./data/clique.gexf","./data/clique-fromFile-expand.png"};
         if(args.length!=4)
         {
             System.out.println("java -jar VisualizaGraph.java <yifan|fruch|openord|force> <pdf|png|svg> <input GEXF> <output SVG>");

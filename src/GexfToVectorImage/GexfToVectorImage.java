@@ -7,13 +7,20 @@
 package GexfToVectorImage;
 
 import java.awt.Color;
+import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.io.PrintWriter;
 import java.io.Writer;
+import java.util.Dictionary;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import org.gephi.graph.api.DirectedGraph;
 import org.gephi.graph.api.GraphController;
@@ -38,6 +45,8 @@ import org.gephi.layout.plugin.fruchterman.FruchtermanReingoldBuilder;
 import org.gephi.layout.plugin.multilevel.YifanHuMultiLevel;
 import org.gephi.layout.plugin.openord.OpenOrdLayout;
 import org.gephi.layout.plugin.openord.OpenOrdLayoutBuilder;
+import org.gephi.layout.plugin.scale.Expand;
+import org.gephi.layout.plugin.scale.ScaleLayout;
 import org.gephi.layout.spi.LayoutBuilder;
 import org.gephi.preview.api.PreviewController;
 import org.gephi.preview.api.PreviewModel;
@@ -59,14 +68,15 @@ import org.openide.util.Lookup;
  */
 public class GexfToVectorImage {
     
-    public final static int OUTPUT_PDF = 0;
-    public final static  int OUTPUT_SVG = 1;
-    public final static int OUTPUT_PNG = 2;
+    public final static int OUTPUT_PDF = 10;
+    public final static  int OUTPUT_SVG = 11;
+    public final static int OUTPUT_PNG = 12;
     
-    public final static  int LAYOUT_YIFANHU = 3;
-    public final static int LAYOUT_FRUCHTERMAN = 4;
-    public final static int LAYOUT_OPENORD = 5;
-    public final static int LAYOUT_FORCE_ATLAS = 6;
+    public final static  int LAYOUT_YIFANHU = 20;
+    public final static int LAYOUT_FRUCHTERMAN = 21;
+    public final static int LAYOUT_OPENORD = 22;
+    public final static int LAYOUT_FORCE_ATLAS = 23;
+    public final static int LAYOUT_EXPAND = 24;
     
     private ProjectController pc;
     private Workspace workspace;
@@ -96,6 +106,39 @@ public class GexfToVectorImage {
             ex.printStackTrace();
         }
         importController.process(container, new DefaultProcessor(), workspace);
+    }
+    
+    private void applyLayoutFromFile(String positionFile, DirectedGraph graph) throws IOException
+    {
+        Map<String, Float> Xref = new HashMap<String, Float>();
+        Map<String, Float> Yref = new HashMap<String, Float>();
+        Map<String, Float> Zref = new HashMap<String, Float>();
+        
+        File f = new File(positionFile);
+        BufferedReader reader = new BufferedReader(new FileReader(f));
+        String line = null;
+        while((line = reader.readLine())!=null)
+        {
+            String[] splString = line.split(",");
+            String node = splString[0];
+            float x = Float.parseFloat(splString[1]);
+            float y = Float.parseFloat(splString[2]);
+            float z = Float.parseFloat(splString[3]);
+            Xref.put(node, x);
+            Yref.put(node, y);
+            Zref.put(node, z);
+        }
+        
+        for(Node n:graph.getNodes())
+        {
+            String currNodeName = n.getNodeData().getLabel();
+            float currX = Xref.get(currNodeName);
+            float currY = Yref.get(currNodeName);
+            float currZ = Zref.get(currNodeName);
+            n.getNodeData().setX(currX);
+            n.getNodeData().setY(currY);
+            n.getNodeData().setZ(currZ);
+        }
     }
     
     private void applyLayout(GraphModel graphModel, int layoutType) throws InterruptedException
@@ -128,7 +171,7 @@ public class GexfToVectorImage {
             layout.resetPropertiesValues();
             //layout.setExpansionStage(40);
             //layout.setNumIterations(750);
-            layout.setEdgeCut(0.8f);
+            layout.setEdgeCut(0.2f);
             //====== Layout parameter ======
             System.out.println("\tCooldown:"+layout.getCooldownStage());
             System.out.println("\tCrunch:"+layout.getCrunchStage());
@@ -139,7 +182,7 @@ public class GexfToVectorImage {
             System.out.println("\tIteration:"+layout.getNumIterations());
             layout.initAlgo();
             System.out.println("\tStart OPENORD Layout >>");
-            layout.goAlgo();
+            //layout.goAlgo();
             while(layout.canAlgo())
                 layout.goAlgo();
             //autoLayout.addLayout(layout, 1.0f);
@@ -153,7 +196,41 @@ public class GexfToVectorImage {
             layout.initAlgo();
             layout.goAlgo();
         }
+        else if(layoutType == LAYOUT_EXPAND)
+        {
+            Expand builder = new Expand();
+            ScaleLayout layout = new ScaleLayout(builder, 2f);
+            layout.setGraphModel(graphModel);
+            layout.resetPropertiesValues();
+            layout.initAlgo();
+             while(layout.canAlgo())
+                layout.goAlgo();
+        }
         System.out.println("Finish executing layout");
+        
+        System.out.println("Recording layout info to file");
+        //recordLayout("graphlayout.data", graphModel.getDirectedGraph());
+        System.out.println("Finish recording layout");
+    }
+    
+    public void recordLayout(String outputFile, DirectedGraph graph)
+    {
+        try {
+            FileWriter fileWrite = new FileWriter(outputFile);
+            PrintWriter printWrite = new PrintWriter(fileWrite);
+            for(Node n: graph.getNodes())
+            {
+                String nodeName = n.getNodeData().getLabel();
+                float X = n.getNodeData().x();
+                float Y = n.getNodeData().y();
+                float Z = n.getNodeData().z();
+                printWrite.printf("%s,%f,%f,%f\n", nodeName, X, Y, Z);
+            }
+            printWrite.close();
+        } catch (IOException ex) {
+            Exceptions.printStackTrace(ex);
+        }
+        
     }
     
     public void export(String gexfFile, String outputFile,int outputType, int layoutType) throws Exception
@@ -193,26 +270,29 @@ public class GexfToVectorImage {
                 int isFraud = Integer.parseInt(n.getAttributes().getValue("fraud").toString());
                 if(isFraud == 1)
                 {
-                    n.getNodeData().setSize(0.5f);
+                    n.getNodeData().setColor(0.8f, 0f, 0.8f);
+                    n.getNodeData().setSize(20f);
                     countFraudNode+=1;
                 }
-                else
-                    n.getNodeData().setSize(0.2f);
+                //else
+                n.getNodeData().setSize(5f);
             }
         }
         System.out.format("#of Fraudsters:%d\n",countFraudNode);
         
         System.out.println("Applying layout");
         applyLayout(graphModel, layoutType);
+        //applyLayoutFromFile("graphlayout.data", graph);
+        //applyLayout(graphModel, LAYOUT_EXPAND);
         System.out.println("Finished applying layout");
         
         //Get preview object
         PreviewModel model = Lookup.getDefault().lookup(PreviewController.class).getModel();
         PreviewProperties prop = model.getProperties();
         prop.putValue(PreviewProperty.SHOW_NODE_LABELS, Boolean.FALSE);
-        prop.putValue(PreviewProperty.EDGE_COLOR, new EdgeColor(Color.DARK_GRAY));
+        prop.putValue(PreviewProperty.EDGE_COLOR, new EdgeColor(Color.WHITE));
         prop.putValue(PreviewProperty.NODE_BORDER_WIDTH, "parent");
-        prop.putValue(PreviewProperty.EDGE_THICKNESS, 1.0f);
+        prop.putValue(PreviewProperty.EDGE_THICKNESS, 0.2f);
         prop.putValue(PreviewProperty.EDGE_CURVED, Boolean.FALSE);
         prop.putValue(PreviewProperty.DIRECTED, Boolean.TRUE);
         prop.putValue(PreviewProperty.EDGE_RESCALE_WEIGHT, Boolean.TRUE);
