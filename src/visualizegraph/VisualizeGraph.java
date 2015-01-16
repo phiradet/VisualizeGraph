@@ -20,7 +20,7 @@ public class VisualizeGraph {
      */
     public static void main(String[] args) {
         //args = new String[] {"force","png","./data/clique.gexf","./data/clique-fromFile-expand.png"};
-        if(args.length!=4)
+        if(args.length!=5)
         {
             System.out.println("java -jar VisualizaGraph.java <yifan|fruch|openord|force> <pdf|png|svg> <input GEXF> <output SVG>");
             return;
@@ -60,12 +60,13 @@ public class VisualizeGraph {
         }
         String gexfFile = args[2];
         String svgFile = args[3];
+        String locationFile = args[4]; 
         //String gexfFile = "./data/clique.gexf";
         //String svgFile = "./data/cliqeu.svg";
-        System.out.format("Input:%s\nOutput:%s\n", gexfFile, svgFile);
+        System.out.format("Input:%s\nOutput:%s\nLocation file:%s\n", gexfFile, svgFile, locationFile);
         try {
             System.out.format("Executing %d %d\n", outputType, layout);
-            g.export(gexfFile, svgFile, outputType, layout);
+            g.export(gexfFile, svgFile, outputType, layout, locationFile);
         } catch (Exception ex) {
             Exceptions.printStackTrace(ex);
         }

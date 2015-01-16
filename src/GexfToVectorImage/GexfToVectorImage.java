@@ -141,7 +141,7 @@ public class GexfToVectorImage {
         }
     }
     
-    private void applyLayout(GraphModel graphModel, int layoutType) throws InterruptedException
+    private void applyLayout(GraphModel graphModel, int layoutType, String locationFile) throws InterruptedException
     {
         //Layout
         System.out.println("Executing layout");
@@ -194,7 +194,8 @@ public class GexfToVectorImage {
             layout.setGraphModel(graphModel);
             layout.resetPropertiesValues();
             layout.initAlgo();
-            layout.goAlgo();
+            while(layout.canAlgo())
+                layout.goAlgo();
         }
         else if(layoutType == LAYOUT_EXPAND)
         {
@@ -209,7 +210,7 @@ public class GexfToVectorImage {
         System.out.println("Finish executing layout");
         
         System.out.println("Recording layout info to file");
-        //recordLayout("graphlayout.data", graphModel.getDirectedGraph());
+        recordLayout(locationFile, graphModel.getDirectedGraph());
         System.out.println("Finish recording layout");
     }
     
@@ -233,7 +234,7 @@ public class GexfToVectorImage {
         
     }
     
-    public void export(String gexfFile, String outputFile,int outputType, int layoutType) throws Exception
+    public void export(String gexfFile, String outputFile,int outputType, int layoutType, String locationFile) throws Exception
     {
         if(outputType != OUTPUT_PDF && outputType != OUTPUT_SVG && outputType != OUTPUT_PNG)
         {
@@ -254,7 +255,8 @@ public class GexfToVectorImage {
         System.out.println("Edges: " + graph.getEdgeCount());
         
         //Edit node's color according to a attribute
-        int countFraudNode = 0;
+        //int countFraudNode = 0;
+        /*
         for(Node n: graph.getNodes())
         {
             String type = n.getAttributes().getValue("type").toString();
@@ -279,10 +281,10 @@ public class GexfToVectorImage {
             }
         }
         System.out.format("#of Fraudsters:%d\n",countFraudNode);
-        
+        */
         System.out.println("Applying layout");
-        applyLayout(graphModel, layoutType);
-        //applyLayoutFromFile("graphlayout.data", graph);
+        applyLayout(graphModel, layoutType, locationFile);
+        //applyLayoutFromFile(locationFile, graph);
         //applyLayout(graphModel, LAYOUT_EXPAND);
         System.out.println("Finished applying layout");
         
